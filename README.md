@@ -1,56 +1,49 @@
-# Welcome to your Expo app 👋
+# Panadería — app móvil (vendedores)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+App offline-first en React Native (Expo SDK 56) + expo-sqlite. Toda la operación
+funciona sin internet; los cambios se sincronizan solos contra el backend
+Laravel cuando hay señal (al abrir, al guardar, al recuperar conexión y cada 5 min).
 
-## Get started
+## Probar en el teléfono (Expo Go)
 
-1. Install dependencies
-
-   ```bash
-   npm install
+1. Instala **Expo Go** desde Play Store / App Store.
+2. Arranca el backend accesible en la red local:
    ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
+   cd ..\backend
+   php artisan serve --host=0.0.0.0 --port=8124
    ```
+   (si Windows Firewall pregunta, permitir acceso en redes privadas)
+3. Arranca la app:
+   ```
+   npm start
+   ```
+4. Escanea el QR con Expo Go (el teléfono debe estar en el mismo wifi).
+5. En la pestaña **Ajustes**: verifica que el servidor sea `http://<IP-de-tu-PC>:8124`
+   (por defecto `http://192.168.1.107:8124`), pulsa **Sincronizar ahora**
+   y elige el **vendedor**.
 
-In the output, you'll find options to open the app in a
+## Pantallas
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- **Hoy** — la ruta del día: clientes que tocan hoy, en orden de visita, con
+  check y monto de los ya atendidos. Tocar un cliente abre su pedido.
+- **Clientes** — búsqueda y filtro por ruta; ficha con llamar, mapa (GPS) e historial.
+- **Pedidos** — historial agrupado por día con total diario.
+- **Ajustes** — servidor, vendedor activo, sincronización manual y pendientes.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Sincronización
 
-## Get a fresh project
+`src/sync/sync.ts` implementa el protocolo pull/push del backend
+(`/api/sync/pull`, `/api/sync/push`). Reglas:
 
-When you're ready, run:
+- Todo cambio local marca `_dirty=1`; los borrados marcan `_deleted=1`.
+- El push sube lo sucio (el servidor hace upsert idempotente) y al confirmarse
+  limpia las marcas.
+- El pull aplica los cambios del servidor pero **nunca pisa un registro local
+  con `_dirty=1`** (gana el dispositivo hasta que suba).
+- `last_pulled_at` se guarda en la tabla `sync_meta`.
 
-```bash
-npm run reset-project
-```
+## Pendiente
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-### Other setup steps
-
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- Login de vendedores (Sanctum) y token en las peticiones de sync.
+- Build de producción (EAS) cuando se valide el flujo con la panadería.
+- Capturar GPS del cliente desde el teléfono (expo-location).
